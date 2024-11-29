@@ -1,0 +1,19 @@
+pyngrok 
+sentence-transformers 
+pdfplumber 
+langchain-groq 
+langchain-core 
+PyMuPDF 
+frontend
+pendulum #
+frontend
+nltk
+plotly
+tensorflow
+scikit-learn==1.2.2
+joblib==1.4.2
+tensorflow_hub
+gensim
+bs4
+spacy
+python-dotenv
