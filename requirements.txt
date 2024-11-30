@@ -1,4 +1,5 @@
 streamlit
+gunicorn
 pyngrok 
 sentence-transformers 
 pdfplumber 
