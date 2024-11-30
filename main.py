@@ -410,9 +410,10 @@ def groq(jd):
 
     system = '''
     1. Act as a Minimum No of Experience required telling person.
-    2. The user will provide input as Job description, you have to give him minimum no of experience required to apply for the job as its must be mentioned in JD.
-    
-    3. If you cannot find any experience mentioned or you found something like Freshers can apply and IF provided description is not a JD(if it is something else apart from JD) then just respond with "0.0".
+    2. The user will provide input as whole Job description, you have to provide minimum no of experience required to apply for the job as its must be clearly mentioned in JD.
+    3 . If found something like Freshers can apply or no experience requied, respond with `0.0`.
+    3. If you not able find any experience explicitly mentioned in job description, then just respond with `0.0`.
+    4. If the provided description is not any kind of JD(if it is something else apart from JD, like artical random pdf, not a jd), then just repond with `False`.
     4. Do not give any introduction about who you are and what you are going to do.
     5. Don't try to give false experience.
     
@@ -484,29 +485,38 @@ def extract_experience(resume):
     return final_text
 
 main_score = {}
-
 def to_check_exp(resume: str, jd: str, main_score: dict) -> None:
+
     try:
-        required_experience = float(groq(jd))
-        print('Required Experience:', required_experience)
+        # Extract required experience from the job description
+        required_experience = groq(jd)
+        
+        if required_experience == 'False' or required_experience is None:
+            print("Please enter a valid Job Description.")
+            main_score['exp_match'] = 0  # Default to no match if JD is invalid
+            return
+        
+        required_experience = float(required_experience)
+        print(f"Required Experience: {required_experience} years")
 
-        tt = extract_experience(resume)
-        candidate_experience = float(calculate_total_experience(tt))
-        print('Candidate Experience:', candidate_experience)
+        # Extract and calculate candidate's total experience
+        extracted_exp = extract_experience(resume)
+        candidate_experience = float(calculate_total_experience(extracted_exp))
+        print(f"Candidate Experience: {candidate_experience} years")
 
-        if candidate_experience < required_experience:
-            print('User experience does not match the Job Description.')
-            print(f'User Exp: {candidate_experience}, Required Exp: {required_experience}')
-
-        main_score['exp_match'] = int(candidate_experience >= required_experience)
+        # Compare experience and update main_score
+        if candidate_experience >= required_experience:
+            print("User experience matches the Job Description.")
+            main_score['exp_match'] = 1
+        else:
+            print("User experience does not match the Job Description.")
+            print(f"User Exp: {candidate_experience}, Required Exp: {required_experience}")
+            main_score['exp_match'] = 0
 
     except (ValueError, TypeError) as e:
         print(f"Error while processing: {e}")
         main_score['exp_match'] = 0  # Default to no match on error
-    
 
-    
-    
 ####################################################
 def extract_skills(text):
     skills_pattern = (
