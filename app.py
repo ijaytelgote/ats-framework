@@ -50,6 +50,8 @@ def run_thread(target, *args):
         thread.join()
     except Exception as e:
         st.error(f"Error in {target.__name__}: {e}")
+def convert_tuple_to_int(t):
+    return t[0] if isinstance(t, tuple) and len(t) == 1 else None
 
 # Process Scan button action
 if st.button('Scan'):
@@ -93,12 +95,18 @@ if st.button('Scan'):
             scoring = last_score(all_score, work_exp_matches)
 
             # Ensure scoring is numeric
-            if if_resume==1:
+            if convert_tuple_to_int(if_resume)==1:
+                print("resume parsed")
                 if isinstance(scoring,str):
                     current_value = float(scoring.strip('%'))
+                    print('final _score ',current_value)
                 else:
                     current_value = float(scoring)
+                    print('final _score ',current_value)
+
             else:
+                print('not parsed score ',convert_tuple_to_int(if_resume))
+
                 current_value=0
 
             st.subheader("Total Score")
