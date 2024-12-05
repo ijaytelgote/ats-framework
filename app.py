@@ -1,188 +1,117 @@
+import logging
 import threading
 
 import fitz  # PyMuPDF
-import numpy as np
-import plotly.graph_objects as go
-import streamlit as st
+from flask import Flask, jsonify, request
 from main import (all_other, education_master, finale, last_score,
                   logic_actionable_words, logic_similarity_matching2,
                   main_score, master_score, resume_parsing_2, to_check_exp)
 
-# Define the country variable if needed
+# Initialize Flask app
+app = Flask(__name__)
+logging.basicConfig(level=logging.INFO)
+
+# Constants
 country = 'India'
 
-# Set the title of the app
-st.title('PDF and Job Description Input')
-
-# File uploader for PDF
-uploaded_pdf = st.file_uploader("Upload your Resume", type="pdf")
-
-# Text input for Job Description
-text_input = st.text_input("Enter the Job Description")
-
-# Function to ensure all scores are present in the dictionary
 def ensure_all_scores(score_dict, required_keys):
     for key in required_keys:
         if key not in score_dict:
             score_dict[key] = 0
 
-# Extract text from the uploaded PDF
-def extract_text_from_pdf(file):
-    if file is None:
-        st.error("No file uploaded")
-        return None
+def extract_text_from_pdf(pdf_file):
     try:
-        pdf_document = fitz.open(stream=file.read(), filetype="pdf")
-        text = ""
-        for page_num in range(len(pdf_document)):
-            page = pdf_document.load_page(page_num)
-            text += page.get_text()
-        return text
+        pdf_content = pdf_file.read()
+        pdf_text = ""
+        with fitz.open(stream=pdf_content, filetype="pdf") as pdf:
+            for page in pdf:
+                pdf_text += page.get_text()
+        return pdf_text
     except Exception as e:
-        st.error(f"Error reading PDF: {e}")
+        logging.error(f"Error reading PDF: {e}")
         return None
 
-# Function to run threads with error handling
 def run_thread(target, *args):
     try:
         thread = threading.Thread(target=target, args=args)
         thread.start()
         thread.join()
     except Exception as e:
-        st.error(f"Error in {target.__name__}: {e}")
+        logging.error(f"Error in {target.__name__}: {e}")
+
 def convert_tuple_to_int(t):
     return t[0] if isinstance(t, tuple) and len(t) == 1 else None
 
-# Process Scan button action
-if st.button('Scan'):
-    if uploaded_pdf and text_input:
-        # Extract data
-        resume = extract_text_from_pdf(uploaded_pdf)
-        jd = text_input
+def start(pdf_path, text_input):
+    resume = extract_text_from_pdf(pdf_path)
+    jd = text_input
 
-        if resume and jd:
-            # Run all threads with error handling
-            run_thread(education_master, resume, master_score, country)
-            run_thread(finale, resume, master_score)
-            run_thread(resume_parsing_2, resume, master_score)
-            run_thread(to_check_exp, resume, jd, main_score)
-            run_thread(logic_actionable_words, resume, master_score)
-            run_thread(logic_similarity_matching2, resume, jd, master_score)
-            run_thread(all_other, master_score, uploaded_pdf)
+    if resume and jd:
+        run_thread(education_master, resume, master_score, country)
+        run_thread(finale, resume, master_score)
+        run_thread(resume_parsing_2, resume, master_score)
+        run_thread(to_check_exp, resume, jd, main_score)
+        run_thread(logic_actionable_words, resume, master_score)
+        run_thread(logic_similarity_matching2, resume, jd, master_score)
+        run_thread(all_other, master_score, pdf_path)
 
-            # Ensure all expected score keys are present
-            required_master_keys = [
-                'score_education_detection_', 'score_other', 
-                'similarity_matching_score', 'Action_score'
-                , 'matrix_score'
-            ]
-            required_main_keys = ['exp_match','Parsing_score']
-            
-            ensure_all_scores(master_score, required_master_keys)
-            ensure_all_scores(main_score, required_main_keys)
+        required_master_keys = [
+            'score_education_detection_', 'score_other',
+            'similarity_matching_score', 'Action_score',
+            'matrix_score'
+        ]
+        required_main_keys = ['exp_match', 'Parsing_score']
 
-            # Collect scores
-            all_score = [
-                master_score['score_education_detection_'],
-                master_score['score_other'],
-                master_score['similarity_matching_score'],
-                master_score['Action_score'],
-                master_score['matrix_score']
-            ]
-            if_resume=master_score['Parsing_score'],
+        ensure_all_scores(master_score, required_master_keys)
+        ensure_all_scores(main_score, required_main_keys)
 
-            work_exp_matches = main_score['exp_match']
-            scoring = last_score(all_score, work_exp_matches)
+        all_score = [
+            master_score['score_education_detection_'],
+            master_score['score_other'],
+            master_score['similarity_matching_score'],
+            master_score['Action_score'],
+            master_score['matrix_score']
+        ]
+        if_resume = master_score['Parsing_score']
 
-            # Ensure scoring is numeric
-            if convert_tuple_to_int(if_resume)==1:
-                print("resume parsed")
-                if isinstance(scoring,str):
-                    current_value = float(scoring.strip('%'))
-                    print('final _score ',current_value)
-                else:
-                    current_value = float(scoring)
-                    print('final _score ',current_value)
-
+        work_exp_matches = main_score['exp_match']
+        scoring = last_score(all_score, work_exp_matches)
+        print(">>>>>>>>>",if_resume)
+        if if_resume == 1:
+            logging.info("Resume parsed successfully")
+            if isinstance(scoring, str):
+                current_value = float(scoring.strip('%'))
             else:
-                print('not parsed score ',convert_tuple_to_int(if_resume))
-
-                current_value=0
-
-            st.subheader("Total Score")
-
-            # Plotly gauge chart code
-            plot_bgcolor = 'rgba(0,0,0,0)'
-            plot_bgcolor = 'rgba(0,0,0,0)'
-            quadrant_colors = [
-                plot_bgcolor, "#2bad4e", "#85e043",
-                "#eff229", "#f2a529", "#f25829"
-            ]
-            quadrant_text = [
-                "", "<b>Very high</b>", "<b>High</b>",
-                "<b>Medium</b>", "<b>Low</b>", "<b>Very low</b>"
-            ]
-            n_quadrants = len(quadrant_colors) - 1
-
-            min_value = 0
-            max_value = 100
-            hand_length = 0.25
-            hand_angle = np.pi * (1 - (current_value - min_value) / (max_value - min_value))
-
-            fig = go.Figure(
-                data=[
-                    go.Pie(
-                        values=[0.5] + (np.ones(n_quadrants) / 2 / n_quadrants).tolist(),
-                        rotation=90,
-                        hole=0.5,
-                        marker_colors=quadrant_colors,
-                        text=quadrant_text,
-                        textinfo="text",
-                        hoverinfo="skip",
-                    ),
-                ],
-                layout=go.Layout(
-                    showlegend=False,
-                    margin=dict(b=20, t=20, l=20, r=20),
-                    width=500,
-                    height=500,
-                    paper_bgcolor=plot_bgcolor,
-                    annotations=[
-                        go.layout.Annotation(
-                            text=f"<b>Score:</b><br>{current_value}%",
-                            x=0.5, xanchor="center", xref="paper",
-                            y=0.35, yanchor="bottom", yref="paper",
-                            showarrow=False,
-                            font=dict(size=14, color="#ffffff")
-                        )
-                    ],
-                    shapes=[
-                        go.layout.Shape(
-                            type="circle",
-                            x0=0.48, x1=0.52,
-                            y0=0.48, y1=0.52,
-                            fillcolor="#ffffff",
-                            line_color="#ffffff",
-                        ),
-                        go.layout.Shape(
-                            type="line",
-                            x0=0.5, x1=0.5 + hand_length * np.cos(hand_angle),
-                            y0=0.5, y1=0.5 + hand_length * np.sin(hand_angle),
-                            line=dict(color="#ffffff", width=4)
-                        )
-                    ]
-                )
-            )
-
-            # Display the Plotly chart in Streamlit
-            st.plotly_chart(fig)
-
-            # Log all scores
-            st.text("Detailed Scores:")
-            st.json(master_score)
-            st.json(main_score)
-
+                current_value = float(scoring)
         else:
-            st.error("Failed to process the inputs. Please try again.")
-    else:
-        st.error("Please upload both the Resume and Job Description.")
+            logging.info(f"Resume not parsed successfully: {if_resume}")
+            current_value = 0
+
+        return current_value
+
+import logging
+
+import fitz  # PyMuPDF
+from flask import Flask, jsonify, request
+
+
+@app.route('/calculate_score', methods=['POST'])
+def calculate_score():
+    # Retrieve the uploaded file
+    pdf_file = request.files.get('pdf_file')
+    jd = request.form.get('jd')  # Use form-data for JD
+
+    if not pdf_file or not jd:
+        return jsonify({"error": "PDF file and Job Description are required"}), 400
+
+    # Process the file and JD
+    score = start(pdf_file, jd)
+
+    # Return the result
+    return jsonify({"score": score})
+
+
+if __name__ == '__main__':
+    
+    app.run(debug=True, threaded=False,use_reloader=False)
+
