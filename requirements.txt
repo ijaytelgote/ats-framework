@@ -14,7 +14,7 @@ plotly
 tensorflow
 scikit-learn==1.2.2
 joblib==1.4.2
-tensorflow==2.11.1
+tensorflow_hub==0.2.0
 gensim
 bs4
 spacy
