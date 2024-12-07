@@ -1,5 +1,5 @@
 import os
-
+os.environ['CUDA_VISIBLE_DEVICES'] = '-1'  # Disables GPU and uses only CPU
 os.environ["PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION"] = "python"
 os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"
 os.environ["FLASK_ENV"] = "production"
