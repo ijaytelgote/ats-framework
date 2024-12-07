@@ -1,5 +1,4 @@
 h5py
-streamlit
 pyngrok 
 sentence-transformers 
 pdfplumber 
