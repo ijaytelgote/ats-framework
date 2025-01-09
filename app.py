@@ -10,7 +10,7 @@ import threading
 
 import fitz  # PyMuPDF
 from flask import Flask, jsonify, request
-from apps import (all_other, education_master, finale, last_score,
+from main import (all_other, education_master, finale, last_score,
                   logic_actionable_words, logic_similarity_matching2,
                   main_score, master_score, resume_parsing_2, to_check_exp)
 
