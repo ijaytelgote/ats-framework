@@ -10,8 +10,6 @@ frontend
 pendulum #
 frontend
 nltk
-plotly
-scipy==1.13.1
 flask
 pandas
 torch
@@ -19,5 +17,4 @@ scikit-learn==1.2.2
 joblib==1.4.2
 gensim
 bs4
-spacy
 python-dotenv
