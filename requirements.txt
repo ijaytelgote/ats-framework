@@ -15,10 +15,8 @@ scipy==1.13.1
 flask
 pandas
 torch
-tensorflow==2.18.0
 scikit-learn==1.2.2
 joblib==1.4.2
-tensorflow_hub==0.16.1
 gensim
 bs4
 spacy
